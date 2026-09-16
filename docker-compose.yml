@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Terraform - Infrastructure as Code
+  # ============================================
+  terraform:
+    image: hashicorp/terraform:1.10
+    container_name: cspm-terraform
+    working_dir: /workspace
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./post-01-infraestructura-vulnerable/terraform:/workspace
+      - terraform-cache:/root/.terraform.d
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # Prowler - Security Assessment
+  # ============================================
+  prowler:
+    image: public.ecr.aws/prowler-cloud/prowler:stable
+    container_name: cspm-prowler
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./prowler-output:/prowler/output
+    command: >
+      aws
+      --resource-tag Project=cspm-demo
+      --output-formats html csv json-ocsf
+      --output-directory /prowler/output
+
+  # ============================================
+  # Cloud Custodian - Remediation Engine
+  # ============================================
+  custodian:
+    build:
+      context: ./docker/custodian
+      dockerfile: Dockerfile
+    container_name: cspm-custodian
+    working_dir: /custodian
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./cloud-custodian-policies:/custodian/policies
+      - ./custodian-output:/custodian/output
+
+volumes:
+  terraform-cache:
+    driver: local

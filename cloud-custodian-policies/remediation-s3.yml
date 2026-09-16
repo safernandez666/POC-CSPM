@@ -1,0 +1,72 @@
+policies:
+  # ============================================
+  # Política S3: Bloquear acceso público
+  # ============================================
+  - name: block-public-s3-buckets-fixed
+    description: |
+      Habilita Block Public Access en buckets S3 que tienen el tag Project=cspm-demo.
+      Fix: Usando sintaxis correcta para filtrar por tags en S3.
+    resource: aws.s3
+    filters:
+      # Filtro correcto para tags en S3
+      - type: value
+        key: "Tags[?Key=='Project'].Value | [0]"
+        value: cspm-demo
+    actions:
+      # Habilitar Block Public Access
+      - type: set-public-block
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ============================================
+  # Política S3: Habilitar encriptación
+  # ============================================
+  - name: enable-s3-encryption-fixed
+    description: |
+      Habilita encriptación AES256 en buckets S3 con tag Project=cspm-demo.
+    resource: aws.s3
+    filters:
+      - type: value
+        key: "Tags[?Key=='Project'].Value | [0]"
+        value: cspm-demo
+    actions:
+      - type: set-bucket-encryption
+        enabled: true
+        crypto: AES256
+
+  # ============================================
+  # Política S3: Habilitar versionado
+  # ============================================
+  - name: enable-s3-versioning
+    description: |
+      Habilita versionado en buckets S3 para protección contra eliminación.
+    resource: aws.s3
+    filters:
+      - type: value
+        key: "Tags[?Key=='Project'].Value | [0]"
+        value: cspm-demo
+      - type: bucket-versioning
+        value: false
+    actions:
+      - type: toggle-versioning
+        enabled: true
+
+  # ============================================
+  # Política S3: Habilitar logging
+  # ============================================
+  - name: enable-s3-logging
+    description: |
+      Habilita logging de acceso en buckets S3.
+    resource: aws.s3
+    filters:
+      - type: value
+        key: "Tags[?Key=='Project'].Value | [0]"
+        value: cspm-demo
+      - type: bucket-logging
+        op: disabled
+    actions:
+      - type: toggle-logging
+        target_bucket: cspm-demo-logs
+        target_prefix: "{source_bucket_name}/"

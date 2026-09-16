@@ -1,0 +1,88 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfvars
+**/.terraform.tfstate.lock.info
+
+# AWS Credentials
+**/.aws/
+**/credentials
+**/config
+
+# Prowler outputs
+**/prowler-output*/
+**/custodian-output/
+**/compliance/
+
+# Excluir HTMLs de output pero NO el diagrama
+**/*.html
+!cspm-cycle-diagram.html
+
+# Excluir JSONs de output pero NO el workflow del diagrama
+**/*.json
+!cspm-cycle.workflow.json
+!package.json
+!**/terraform/*.json
+
+# Excluir CSVs de output
+**/*.csv
+
+# Cloud Custodian
+**/custodian.log
+**/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+*.egg-info/
+
+# Logs
+*.log
+**/publish-result.log
+
+# Environment
+.env
+.env.save
+
+# Posts y documentación que no va al repo
+POST-FINAL.md
+BLOG-POST*.md
+PUBLISHED_POST_INFO.md
+CLAUDE.md
+.claude/
+.agents/
+.membrane/
+skills-lock.json
+agent/
+
+# Scripts con credenciales
+publish-devto.sh
+publish-result.log
+
+# Documentación extra del post
+post-01-infraestructura-vulnerable/DEPLOYMENT.md
+post-01-infraestructura-vulnerable/PUBLISH_TO_HASHNODE.md
+post-01-infraestructura-vulnerable/SECURITY_ISSUES.md
+post-01-infraestructura-vulnerable/TESTING.md
+post-01-infraestructura-vulnerable/*.html
+
+# Screenshots individuales (usar solo el diagrama)
+screenshots/
+images/

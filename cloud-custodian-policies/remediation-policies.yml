@@ -1,0 +1,90 @@
+policies:
+  # ============================================
+  # Política 1: Cerrar Security Groups con SSH abierto a 0.0.0.0/0
+  # ============================================
+  - name: close-ssh-security-groups
+    description: |
+      Remedia Security Groups que tienen SSH (puerto 22) abierto a todo internet (0.0.0.0/0).
+      Riesgo: CIS 5.2 - Permite ataques de fuerza bruta desde cualquier IP.
+    resource: aws.security-group
+    filters:
+      # Solo recursos con nuestro tag de demo
+      - tag:Project: cspm-demo
+      # Que tengan SSH abierto a 0.0.0.0/0
+      - type: ingress
+        Cidr:
+          value: "0.0.0.0/0"
+        Ports: [22]
+    actions:
+      # Remover la regla peligrosa
+      - type: remove-permissions
+        ingress: matched
+
+  # ============================================
+  # Política 2: Cerrar Security Groups con RDP abierto a 0.0.0.0/0
+  # ============================================
+  - name: close-rdp-security-groups
+    description: |
+      Remedia Security Groups que tienen RDP (puerto 3389) abierto a todo internet.
+      Riesgo: Vector principal de ransomware.
+    resource: aws.security-group
+    filters:
+      - tag:Project: cspm-demo
+      - type: ingress
+        Cidr:
+          value: "0.0.0.0/0"
+        Ports: [3389]
+    actions:
+      - type: remove-permissions
+        ingress: matched
+
+  # ============================================
+  # Política 3: Bloquear acceso público en S3 buckets
+  # ============================================
+  - name: block-public-s3-buckets
+    description: |
+      Habilita Block Public Access en buckets S3 públicos.
+      Riesgo: CIS 2.1.5 - Exposición de datos sensibles.
+    resource: aws.s3
+    filters:
+      - tag:Project: cspm-demo
+      # Buckets que NO tienen public access block habilitado
+      - or:
+        - type: value
+          key: PublicAccessBlockConfiguration.BlockPublicAcls
+          value: false
+        - type: value
+          key: PublicAccessBlockConfiguration.BlockPublicPolicy
+          value: false
+        - type: value
+          key: PublicAccessBlockConfiguration.IgnorePublicAcls
+          value: false
+        - type: value
+          key: PublicAccessBlockConfiguration.RestrictPublicBuckets
+          value: false
+    actions:
+      # Habilitar Block Public Access
+      - type: set-public-block
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ============================================
+  # Política 4: Habilitar encriptación en S3 buckets
+  # ============================================
+  - name: enable-s3-encryption
+    description: |
+      Habilita encriptación server-side (AES256) en buckets S3.
+      Riesgo: CIS 2.1.1 - Datos en reposo sin protección.
+    resource: aws.s3
+    filters:
+      - tag:Project: cspm-demo
+      # Buckets sin encriptación configurada
+      - type: bucket-encryption
+        state: false
+    actions:
+      # Habilitar encriptación AES256
+      - type: set-bucket-encryption
+        enabled: true
+        crypto: AES256

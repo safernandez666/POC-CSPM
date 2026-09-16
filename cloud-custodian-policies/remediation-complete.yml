@@ -1,0 +1,60 @@
+policies:
+  # ============================================
+  # 1. Cerrar HTTP en Security Groups
+  # ============================================
+  - name: close-http-security-groups
+    description: Cierra puerto HTTP (80) abierto a 0.0.0.0/0
+    resource: aws.security-group
+    filters:
+      - tag:Project: cspm-demo
+      - type: ingress
+        Cidr:
+          value: "0.0.0.0/0"
+        Ports: [80]
+    actions:
+      - type: remove-permissions
+        ingress: matched
+
+  # ============================================
+  # 2. Habilitar versionado en S3
+  # ============================================
+  - name: enable-s3-versioning
+    description: Habilita versionado en buckets S3
+    resource: aws.s3
+    filters:
+      - type: value
+        key: "Tags[?Key=='Project'].Value | [0]"
+        value: cspm-demo
+    actions:
+      - type: toggle-versioning
+        enabled: true
+
+  # ============================================
+  # 3. Habilitar VPC Flow Logs
+  # ============================================
+  - name: enable-vpc-flow-logs
+    description: Habilita Flow Logs en VPCs sin ellos
+    resource: aws.vpc
+    filters:
+      - tag:Project: cspm-demo
+      - type: flow-logs
+        enabled: false
+    actions:
+      - type: set-flow-log
+        DeliverLogsPermissionArn: arn:aws:iam::811236842137:role/flowlogsRole
+        LogDestinationType: cloud-watch-logs
+        LogGroupName: /aws/vpc/flowlogs
+        TrafficType: ALL
+
+  # ============================================
+  # 4. Forzar IMDSv2 en cuenta (nivel account)
+  # ============================================
+  - name: enforce-imdsv2-account-default
+    description: Configura IMDSv2 como default para nuevas instancias
+    resource: aws.account
+    filters:
+      - type: imds-defaults
+        HttpTokens: optional
+    actions:
+      - type: set-imds-defaults
+        HttpTokens: required

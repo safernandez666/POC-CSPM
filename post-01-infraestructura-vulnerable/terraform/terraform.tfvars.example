@@ -1,0 +1,5 @@
+# Copiar este archivo a terraform.tfvars y ajustar valores
+
+aws_region    = "us-east-1"
+project_name  = "cspm-demo"
+instance_type = "t2.micro" # Free tier elegible

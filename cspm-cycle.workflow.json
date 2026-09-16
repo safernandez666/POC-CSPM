@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "CSPM Open Source",
+    "subtitle": "Detectar y remediar vulnerabilidades en AWS automáticamente",
+    "output": "cspm-cycle-diagram.html"
+  },
+  "lanes": [
+    {
+      "id": "deploy",
+      "label": "Deploy"
+    },
+    {
+      "id": "scan",
+      "label": "Escaneo"
+    },
+    {
+      "id": "analyze",
+      "label": "Análisis"
+    },
+    {
+      "id": "remediate",
+      "label": "Remediación"
+    },
+    {
+      "id": "validate",
+      "label": "Validación"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "terraform",
+      "lane": "deploy",
+      "col": 0,
+      "type": "cloud",
+      "label": "IaC",
+      "sublabel": "Terraform"
+    },
+    {
+      "id": "aws",
+      "lane": "deploy",
+      "col": 2,
+      "type": "cloud",
+      "label": "AWS",
+      "sublabel": "Infraestructura"
+    },
+    {
+      "id": "prowler",
+      "lane": "scan",
+      "col": 0,
+      "type": "security",
+      "label": "Prowler",
+      "sublabel": "Scanner",
+      "tag": "600+ checks"
+    },
+    {
+      "id": "report",
+      "lane": "scan",
+      "col": 2,
+      "type": "database",
+      "label": "Hallazgos",
+      "sublabel": "JSON"
+    },
+    {
+      "id": "analysis",
+      "lane": "analyze",
+      "col": 0,
+      "type": "backend",
+      "label": "Priorizar",
+      "sublabel": "Severidad"
+    },
+    {
+      "id": "policies",
+      "lane": "analyze",
+      "col": 2,
+      "type": "database",
+      "label": "Políticas",
+      "sublabel": "YAML"
+    },
+    {
+      "id": "custodian",
+      "lane": "remediate",
+      "col": 0,
+      "type": "backend",
+      "label": "Custodian",
+      "sublabel": "Auto-fix",
+      "tag": "✓ remedia"
+    },
+    {
+      "id": "slack",
+      "lane": "remediate",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Alertas",
+      "sublabel": "Slack"
+    },
+    {
+      "id": "rescan",
+      "lane": "validate",
+      "col": 0,
+      "type": "security",
+      "label": "Re-scan",
+      "sublabel": "Prowler"
+    },
+    {
+      "id": "validation",
+      "lane": "validate",
+      "col": 2,
+      "type": "database",
+      "label": "Comparar",
+      "sublabel": "Antes/Después"
+    }
+  ],
+  "edges": [
+    {
+      "from": "terraform",
+      "to": "aws",
+      "variant": "emphasis"
+    },
+    {
+      "from": "aws",
+      "to": "prowler",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop"
+    },
+    {
+      "from": "prowler",
+      "to": "report",
+      "variant": "emphasis"
+    },
+    {
+      "from": "report",
+      "to": "analysis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop"
+    },
+    {
+      "from": "analysis",
+      "to": "policies",
+      "variant": "emphasis"
+    },
+    {
+      "from": "policies",
+      "to": "custodian",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop"
+    },
+    {
+      "from": "custodian",
+      "to": "aws",
+      "label": "fix",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "left",
+      "route": "return-left"
+    },
+    {
+      "from": "custodian",
+      "to": "slack"
+    },
+    {
+      "from": "slack",
+      "to": "rescan",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop",
+      "variant": "dashed"
+    },
+    {
+      "from": "rescan",
+      "to": "validation",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": []
+}

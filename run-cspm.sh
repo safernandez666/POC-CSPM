@@ -50,11 +50,14 @@ initial_scan() {
     # Crear directorio de output
     mkdir -p prowler-output-before
     
-    # Ejecutar Prowler
+    # Ejecutar Prowler con filtros
+    log_info "   📌 Filtrado: Solo EC2, S3, IAM, VPC | Severidad: Critical, High"
     docker-compose run --rm \
         -v $(pwd)/prowler-output-before:/prowler/output \
         prowler aws \
         --resource-tag Project=cspm-demo \
+        --services ec2 s3 iam vpc \
+        --severity critical high \
         --output-formats html csv json-ocsf \
         --output-directory /prowler/output
     
@@ -107,11 +110,14 @@ validate() {
     # Crear directorio de output
     mkdir -p prowler-output-after
     
-    # Ejecutar Prowler de nuevo
+    # Ejecutar Prowler de nuevo con filtros
+    log_info "   📌 Filtrado: Solo EC2, S3, IAM, VPC | Severidad: Critical, High"
     docker-compose run --rm \
         -v $(pwd)/prowler-output-after:/prowler/output \
         prowler aws \
         --resource-tag Project=cspm-demo \
+        --services ec2 s3 iam vpc \
+        --severity critical high \
         --output-formats html csv json-ocsf \
         --output-directory /prowler/output
     

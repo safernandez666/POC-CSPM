@@ -36,6 +36,8 @@ services:
     command: >
       aws
       --resource-tag Project=cspm-demo
+      --services ec2 s3 iam vpc
+      --severity critical high
       --output-formats html csv json-ocsf
       --output-directory /prowler/output
 

@@ -27,8 +27,6 @@ open prowler-output/prowler-output-*.html
 docker-compose run --rm terraform -chdir=/workspace destroy
 ```
 
-**📖 [Guía Completa de Docker](./README-DOCKER.md)**
-
 ## 🎯 Objetivo de la Serie
 
 Aprender a:

@@ -67,12 +67,16 @@ env/
 POST-FINAL.md
 BLOG-POST*.md
 PUBLISHED_POST_INFO.md
+post-draft*.md
 CLAUDE.md
 .claude/
 .agents/
 .membrane/
 skills-lock.json
 agent/
+
+# Scratch local (screenshots, borradores) - nunca al repo
+tmp/
 
 # Scripts con credenciales
 publish-devto.sh

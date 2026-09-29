@@ -13,6 +13,15 @@
 #     escanear. Esa parte es solo para la demo, no para uso real.
 # ============================================
 
+# Cargar .env automáticamente si existe y las variables no están ya
+# exportadas en el shell (evita tener que hacer `set -a; source .env; set +a`
+# a mano antes de cada corrida).
+if [ -f .env ] && [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    set -a
+    source .env
+    set +a
+fi
+
 # Colors para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

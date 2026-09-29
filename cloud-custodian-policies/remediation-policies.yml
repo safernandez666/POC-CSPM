@@ -1,3 +1,9 @@
+# NOTA sobre notificaciones a Slack:
+# El campo `url` de cada acción `webhook` usa el placeholder ${SLACK_WEBHOOK_URL}.
+# Cloud Custodian NO soporta interpolar variables de entorno en las policies,
+# así que este archivo se corre a través de ./render-policies.sh, que lee
+# SLACK_WEBHOOK_URL desde .env y genera remediation-policies.rendered.yml
+# (gitignored, con la URL real) — ese es el archivo que se le pasa a `custodian run`.
 policies:
   # ============================================
   # Política 1: Cerrar Security Groups con SSH abierto a 0.0.0.0/0
@@ -19,6 +25,10 @@ policies:
       # Remover la regla peligrosa
       - type: remove-permissions
         ingress: matched
+      - type: webhook
+        url: "${SLACK_WEBHOOK_URL}"
+        batch: true
+        body: "{text: join('', ['🔧 *Cloud Custodian* cerró SSH (22) abierto a `0.0.0.0/0` en *', to_string(length(resources)), '* security group(s): `', join('`, `', resources[].GroupId), '` — cuenta ', account_id, ', región ', region])}"
 
   # ============================================
   # Política 2: Cerrar Security Groups con RDP abierto a 0.0.0.0/0
@@ -37,6 +47,10 @@ policies:
     actions:
       - type: remove-permissions
         ingress: matched
+      - type: webhook
+        url: "${SLACK_WEBHOOK_URL}"
+        batch: true
+        body: "{text: join('', ['🔧 *Cloud Custodian* cerró RDP (3389) abierto a `0.0.0.0/0` en *', to_string(length(resources)), '* security group(s): `', join('`, `', resources[].GroupId), '` — cuenta ', account_id, ', región ', region])}"
 
   # ============================================
   # Política 3: Bloquear acceso público en S3 buckets
@@ -48,20 +62,13 @@ policies:
     resource: aws.s3
     filters:
       - tag:Project: cspm-demo
-      # Buckets que NO tienen public access block habilitado
-      - or:
-        - type: value
-          key: PublicAccessBlockConfiguration.BlockPublicAcls
-          value: false
-        - type: value
-          key: PublicAccessBlockConfiguration.BlockPublicPolicy
-          value: false
-        - type: value
-          key: PublicAccessBlockConfiguration.IgnorePublicAcls
-          value: false
-        - type: value
-          key: PublicAccessBlockConfiguration.RestrictPublicBuckets
-          value: false
+      # Buckets que NO tienen public access block habilitado.
+      # NOTA: antes esto usaba `type: value, key: PublicAccessBlockConfiguration.*`,
+      # pero ese campo no viene poblado en el recurso base de c7n — la policy
+      # nunca matcheaba aunque el bucket estuviera realmente expuesto.
+      # `check-public-block` sí hace la llamada real a la API y, sin parámetros,
+      # matchea si CUALQUIERA de los 4 settings está en false/unset.
+      - type: check-public-block
     actions:
       # Habilitar Block Public Access
       - type: set-public-block
@@ -69,6 +76,10 @@ policies:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      - type: webhook
+        url: "${SLACK_WEBHOOK_URL}"
+        batch: true
+        body: "{text: join('', ['🔧 *Cloud Custodian* bloqueó acceso público en *', to_string(length(resources)), '* bucket(s) S3: `', join('`, `', resources[].Name), '` — cuenta ', account_id, ', región ', region])}"
 
   # ============================================
   # Política 4: Habilitar encriptación en S3 buckets
@@ -88,3 +99,7 @@ policies:
       - type: set-bucket-encryption
         enabled: true
         crypto: AES256
+      - type: webhook
+        url: "${SLACK_WEBHOOK_URL}"
+        batch: true
+        body: "{text: join('', ['🔧 *Cloud Custodian* habilitó encriptación AES256 en *', to_string(length(resources)), '* bucket(s) S3: `', join('`, `', resources[].Name), '` — cuenta ', account_id, ', región ', region])}"

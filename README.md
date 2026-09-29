@@ -1,209 +1,132 @@
-# CSPM Sin Pagar Licencias 🐳
+# CSPM sin pagar licencias
 
-Implementación práctica de Cloud Security Posture Management (CSPM) usando herramientas open source gratuitas: **Prowler** para detección y **Cloud Custodian** para remediación automática.
+Cloud Security Posture Management (CSPM) 100% open source: **Prowler** detecta, **Cloud Custodian** remedia, **Slack** avisa. Alternativa gratis a herramientas comerciales como Wiz, Prisma Cloud o Lacework ($8,000–$40,000/año).
 
-**🐳 TODO en Docker** - No instales nada excepto Docker. Funciona en cualquier máquina.
+Todo corre en Docker. No hay que instalar Prowler, Cloud Custodian ni Terraform en el host.
 
-Alternativa open source a herramientas comerciales como Wiz, Prisma Cloud, y Lacework.
+**Última corrida verificada:** 10 checks fallando → 5 resueltos automáticamente (50% de mejora, 0 críticas al final) en ~3 minutos, sin intervención manual. Detalle completo en el post: *(link cuando se publique)*.
 
-## 🚀 Quickstart con Docker (5 minutos)
+## Qué es cada cosa
+
+El repo tiene dos formas de usarlo, según si querés probar la demo o aplicar esto a tu propia cuenta AWS.
+
+| Archivo | Qué es |
+|---|---|
+| **`cspm-automate.sh`** | El pipeline real: Prowler escanea → se analiza → Cloud Custodian remedia → Prowler valida → Slack avisa. Sin Terraform, no crea ni destruye nada. **Este es el que correrías contra tu propia infraestructura.** |
+| **`run-cspm.sh`** | El demo de este repo. Hace lo mismo que `cspm-automate.sh`, pero además crea y destruye con Terraform la infraestructura vulnerable de juguete que se usa para tener algo que escanear. Es para probar el proyecto, no para una cuenta real. |
+| `cspm-pipeline.sh` | Librería compartida por los dos scripts de arriba (logging, Slack, conteo de hallazgos, los 4 pasos del pipeline). No se corre directo. |
+| `render-policies.sh` | Sustituye `${SLACK_WEBHOOK_URL}` en las policies de Cloud Custodian leyendo `.env`, y genera el archivo `.rendered.yml` que efectivamente se ejecuta. El webhook real nunca se commitea. |
+| `cloud-custodian-policies/remediation-policies.yml` | Las 4 policies de remediación: cerrar SSH abierto, cerrar RDP abierto, bloquear acceso público en S3, forzar encriptación en S3. |
+| `post-01-infraestructura-vulnerable/terraform/` | La infra de juguete (EC2, S3, Security Group, IAM Role) con vulnerabilidades intencionales, usada solo por `run-cspm.sh`. |
+| `docker-compose.yml` | Define los 3 servicios: `terraform`, `prowler`, `custodian`. |
+| `cspm-flow-diagram.html` / `.svg` / `.png` | Diagrama del ciclo completo (Deploy → Escaneo → Análisis → Remediación → Validación, con loop de mejora continua). |
+| `.env.example` | Plantilla de variables: credenciales AWS + `SLACK_WEBHOOK_URL` (opcional). |
+
+## Quickstart: probar la demo de este repo
 
 ```bash
-# 1. Clonar
-git clone https://github.com/tu-usuario/POC-CSPM.git
+git clone https://github.com/safernandez666/POC-CSPM.git
 cd POC-CSPM
+cp .env.example .env   # completar credenciales AWS (y opcionalmente SLACK_WEBHOOK_URL)
 
-# 2. Configurar AWS credentials
-cp .env.example .env
-nano .env  # Agregar tus credenciales AWS
-
-# 3. Ejecutar ciclo completo
 ./run-cspm.sh
-
-# 4. Ver resultados
-open prowler-output/prowler-output-*.html
-
-# 5. Cleanup
-docker-compose run --rm terraform -chdir=/workspace destroy
+# elegí la opción 1: Deploy → Scan → Remediate → Validate
 ```
 
-## 🎯 Objetivo de la Serie
+Cuando termines, destruí la infra de juguete para no dejar nada corriendo (opción 5 del menú, o `docker-compose run --rm terraform -chdir=/workspace destroy -auto-approve`).
 
-Aprender a:
-1. Detectar vulnerabilidades en AWS con Prowler
-2. Analizar y priorizar hallazgos de seguridad
-3. Automatizar remediación con Cloud Custodian
-4. Implementar escaneo continuo y remediación automática
-
-## 📚 Posts de la Serie
-
-### ✅ Parte 1: Infraestructura Vulnerable y Detección
-**Estado:** Completado  
-**Directorio:** [`post-01-infraestructura-vulnerable/`](./post-01-infraestructura-vulnerable/)
-
-- Crear infraestructura AWS vulnerable con Terraform
-- Usar tags para aislar recursos demo de producción
-- Escanear con Prowler filtrando por tags
-- Analizar 23+ vulnerabilidades detectadas
-
-**Hallazgos:** 46% failed (23 checks), 54% passed (27 checks)
-
-### 🚧 Parte 2: Análisis de Hallazgos y Priorización
-**Estado:** En desarrollo  
-**Directorio:** `post-02-analisis-hallazgos/`
-
-- Comprender reportes de Prowler (HTML, CSV, JSON)
-- Priorizar por severidad y riesgo de negocio
-- Mapear a frameworks de compliance (CIS, NIST, PCI-DSS)
-
-### 🚧 Parte 3: Introducción a Cloud Custodian
-**Estado:** Planificado  
-**Directorio:** `post-03-cloud-custodian-intro/`
-
-- Instalación y configuración de Cloud Custodian
-- Sintaxis de políticas y filtros
-- Primer política: detectar recursos sin tags
-
-### 🚧 Parte 4: Remediación Automática
-**Estado:** Planificado  
-**Directorio:** `post-04-remediacion-automatica/`
-
-- Crear políticas de Cloud Custodian para remediar hallazgos de Prowler
-- Acciones automáticas: cerrar Security Groups, encriptar S3, etc.
-- Notificaciones con SNS/Slack
-
-### 🚧 Parte 5: Automatización Continua
-**Estado:** Planificado  
-**Directorio:** `post-05-automatizacion-continua/`
-
-- Ciclo completo: escaneo → detección → remediación
-- Integración con CI/CD
-- Dashboards y métricas
-
-## 🚀 Quickstart
-
-### Requisitos Previos
-
-- AWS CLI configurado
-- Terraform >= 1.0
-- Docker (para Prowler)
-- Cuenta AWS (recomendado: cuenta dedicada para testing)
-
-### Parte 1: Infraestructura Vulnerable
+## Usarlo contra tu propia cuenta AWS
 
 ```bash
-# 1. Clonar repositorio
-git clone https://github.com/tu-usuario/POC-CSPM.git
-cd POC-CSPM
-
-# 2. Configurar AWS credentials
-export AWS_ACCESS_KEY_ID=tu_access_key
-export AWS_SECRET_ACCESS_KEY=tu_secret_key
-export AWS_DEFAULT_REGION=us-east-1
-
-# 3. Desplegar infraestructura vulnerable
-cd post-01-infraestructura-vulnerable/terraform
-terraform init
-terraform apply
-
-# 4. Escanear con Prowler (filtrado por tags)
-cd ../..
-mkdir -p prowler-output
-docker run --rm \
-  -e AWS_ACCESS_KEY_ID \
-  -e AWS_SECRET_ACCESS_KEY \
-  -v $(pwd)/prowler-output:/prowler/output \
-  public.ecr.aws/prowler-cloud/prowler:stable aws \
-  --resource-tag Project=cspm-demo \
-  --output-formats html csv json-ocsf \
-  --output-directory /prowler/output
-
-# 5. Ver reporte
-open prowler-output/prowler-output-*.html
-
-# 6. ⚠️ IMPORTANTE: Destruir infraestructura cuando termines
-cd post-01-infraestructura-vulnerable/terraform
-terraform destroy
+cp .env.example .env   # tus credenciales, no las de la demo
 ```
 
-## 🏷️ Estrategia de Tags
+Antes de correrlo, editá `cloud-custodian-policies/remediation-policies.yml`: el filtro `tag:Project: cspm-demo` en cada policy es específico de este repo. Cambialo por el tag (o filtro) que use tu organización para marcar qué recursos puede tocar Cloud Custodian.
+
+```bash
+# Dry-run primero, para ver qué matchearía sin tocar nada
+docker-compose run --rm custodian run -d -s /custodian/output /custodian/policies/remediation-policies.yml
+
+# Cuando confíes en el resultado
+./cspm-automate.sh
+```
+
+## Notificaciones a Slack
+
+Opcional. Si completás `SLACK_WEBHOOK_URL` en `.env`, cada remediación de Cloud Custodian manda un mensaje al canal con el recurso afectado, y al final del ciclo se manda un resumen con el antes/después.
+
+Cloud Custodian no tiene un action simple para pegarle a un incoming webhook de Slack (el action `notify` está pensado para SNS/SQS + c7n-mailer). Las policies de este repo usan el action genérico `webhook`, cuyo `body` es una expresión JMESPath evaluada contra los recursos que matchearon:
+
+```yaml
+- type: webhook
+  url: "${SLACK_WEBHOOK_URL}"
+  batch: true
+  body: "{text: join('', ['🔧 Cloud Custodian cerró SSH (22) en ', to_string(length(resources)), ' security group(s): ', join(', ', resources[].GroupId)])}"
+```
+
+## Estrategia de tags
 
 Todos los recursos de la demo están taggeados con `Project=cspm-demo` para:
 
-- ✅ Aislar completamente de recursos productivos
-- ✅ Escanear SOLO los recursos de la demo con Prowler
-- ✅ Evitar alertas falsas en infraestructura real
-- ✅ Facilitar cleanup con `terraform destroy`
+- Aislar la demo de cualquier otro recurso de la cuenta.
+- Que Prowler escanee solo esto (`--resource-tag Project=cspm-demo`), no toda la cuenta.
+- Que Cloud Custodian sepa exactamente qué puede tocar.
 
-**Comando Prowler con filtro:**
-```bash
-prowler aws --resource-tag Project=cspm-demo
-```
+Sin un tag de aislamiento consistente, no le des un motor de remediación automática a nada.
 
-## 📊 Resultados Esperados
+## Resultados de la última corrida verificada
 
-### Prowler Scan (Parte 1)
+| | Antes | Después |
+|---|---|---|
+| Checks fallando | 10 (16%) | 5 (8%) |
+| Checks pasando | 52 | 57 |
+| Críticos | 4 | 0 |
 
-- **Total checks:** 75
-- **Failed:** 23 (46%)
-- **Passed:** 27 (54%)
+Remediado automáticamente: SSH (22) cerrado, RDP (3389) cerrado, Block Public Access activado en el bucket S3.
 
-**Desglose por servicio:**
-- EC2: 9 fallas (2 críticas, 4 altas, 2 medias, 1 baja)
-- S3: 14 fallas (2 críticas, 2 altas, 6 medias, 4 bajas)
+**No remediado automáticamente, a propósito:**
 
-**Frameworks evaluados:** 44 (CIS, NIST, PCI-DSS, HIPAA, ISO27001, SOC2, etc.)
+- **IMDSv1 en la instancia EC2** — cambiarlo requiere stop/start, y automatizar downtime no es algo que este proyecto haga sin supervisión.
+- **EBS sin encriptar** — no hay operación in-place; requiere snapshot → copiar encriptado → recrear el volumen.
+- **Permisos IAM excesivos** — achicarlos requiere saber qué usa realmente la instancia, y eso es conocimiento de negocio, no algo que una policy pueda inferir.
 
-## ⚠️ Advertencias de Seguridad
-
-**🚨 IMPORTANTE:**
-
-1. **No usar en producción:** Esta infraestructura es INTENCIONALMENTE INSEGURA
-2. **Cuenta dedicada:** Usar cuenta AWS separada para testing
-3. **Destruir después:** Ejecutar `terraform destroy` al terminar
-4. **No exponer datos reales:** No subir información sensible a los buckets S3
-5. **Costos:** Destruir recursos para evitar cobros (~$8-10/mes si se deja corriendo)
-
-## 💰 Costos Estimados
+## Costos
 
 | Recurso | Costo mensual (24/7) |
-|---------|---------------------|
-| EC2 t2.micro | $8.50 (Free tier: $0) |
-| S3 Bucket | $0.023 por GB |
-| VPC/Networking | Gratis |
-| **Total** | **~$8-10/mes** (Free tier: $0) |
+|---|---|
+| EC2 t2.micro | ~$8.50 (Free tier: $0) |
+| S3 Bucket | ~$0.023/GB |
+| VPC / Networking | Gratis |
+| **Total dejándolo prendido** | **~$8–10/mes** |
+| **Crear → probar → destruir el mismo día** | **~$0.30** |
 
-**Recomendación:** Crear → Probar → Destruir el mismo día = $0.30
+Destruí la infra de la demo (`run-cspm.sh` opción 5) cuando termines de probarla.
 
-## 🛠️ Herramientas Utilizadas
+## Advertencias
 
-- **[Prowler](https://github.com/prowler-cloud/prowler)** - Security assessment tool
-- **[Cloud Custodian](https://cloudcustodian.io/)** - Cloud governance & remediation
-- **[Terraform](https://www.terraform.io/)** - Infrastructure as Code
-- **[Docker](https://www.docker.com/)** - Containerización de Prowler
+1. La infraestructura de `post-01-infraestructura-vulnerable/` es **intencionalmente insegura**. No la uses en producción ni cerca de datos reales.
+2. Usá una cuenta AWS dedicada a testing, separada de producción.
+3. `.env` está en `.gitignore` — nunca se sube al repo. Lo mismo el `.rendered.yml` que genera `render-policies.sh` con el webhook real.
+4. Antes de correr `custodian run` sin `--dryrun` contra una cuenta real, revisá el filtro de tag en cada policy.
 
-## 📖 Recursos Adicionales
+## Herramientas
 
-- [CIS AWS Foundations Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services)
-- [NIST 800-53 Security Controls](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
-- [AWS Security Best Practices](https://docs.aws.amazon.com/security/)
-- [Prowler Documentation](https://docs.prowler.com/)
-- [Cloud Custodian Documentation](https://cloudcustodian.io/docs/)
+- [Prowler](https://github.com/prowler-cloud/prowler) — 600+ checks de seguridad AWS.
+- [Cloud Custodian](https://cloudcustodian.io/) — motor de políticas para governance y remediación.
+- [Terraform](https://www.terraform.io/) — infraestructura como código (solo para la demo).
+- [Docker](https://www.docker.com/) — todo containerizado.
 
-## 🤝 Contribuciones
+## Serie de posts
 
-¿Encontraste un bug? ¿Tienes una mejora? ¡Pull requests bienvenidos!
+1. **Infraestructura vulnerable + ciclo completo** — este repo. En progreso.
+2. Análisis de hallazgos de Prowler y cómo priorizar qué remediar primero.
+3. Cloud Custodian a fondo: sintaxis de policies y filtros.
+4. Notificaciones y observabilidad del ciclo de remediación.
 
-## 📝 Licencia
+## Licencia
 
-MIT License - Ver [LICENSE](LICENSE) para detalles.
+MIT — ver [LICENSE](LICENSE).
 
-## ✍️ Autor
+## Autor
 
-Santiago Fernandez - [@tu-usuario](https://github.com/tu-usuario)
-
-Blog: [tu-blog.hashnode.dev](https://tu-blog.hashnode.dev)
-
----
-
-**⭐ Si este proyecto te ayudó, dale una estrella en GitHub!**
+Santiago Fernández — [@safernandez666](https://github.com/safernandez666) · [blog.santiagoagustinfernandez.com](https://blog.santiagoagustinfernandez.com)

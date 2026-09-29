@@ -19,11 +19,10 @@
 
 # Excluir HTMLs de output pero NO el diagrama
 **/*.html
-!cspm-cycle-diagram.html
+!cspm-flow-diagram.html
 
-# Excluir JSONs de output pero NO el workflow del diagrama
+# Excluir JSONs de output
 **/*.json
-!cspm-cycle.workflow.json
 !package.json
 !**/terraform/*.json
 
@@ -33,6 +32,8 @@
 # Cloud Custodian
 **/custodian.log
 **/logs/
+# Generado por render-policies.sh con la URL real del webhook de Slack
+cloud-custodian-policies/remediation-policies.rendered.yml
 
 # IDE
 .vscode/

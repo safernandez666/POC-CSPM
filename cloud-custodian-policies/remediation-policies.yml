@@ -103,3 +103,27 @@ policies:
         url: "${SLACK_WEBHOOK_URL}"
         batch: true
         body: "{text: join('', ['🔧 *Cloud Custodian* habilitó encriptación AES256 en *', to_string(length(resources)), '* bucket(s) S3: `', join('`, `', resources[].Name), '` — cuenta ', account_id, ', región ', region])}"
+
+  # ============================================
+  # Política 5: Forzar IMDSv2 en instancias EC2
+  # ============================================
+  - name: enforce-imdsv2
+    description: |
+      Fuerza IMDSv2 (HttpTokens=required) en instancias EC2 que todavía
+      tienen IMDSv1 habilitado. Riesgo: IMDSv1 es vulnerable a SSRF.
+      Esto NO requiere detener la instancia — ModifyInstanceMetadataOptions
+      es una llamada en caliente sobre la instancia corriendo.
+      Ref: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-transition-to-version-2.html
+    resource: aws.ec2
+    filters:
+      - tag:Project: cspm-demo
+      - type: value
+        key: MetadataOptions.HttpTokens
+        value: optional
+    actions:
+      - type: set-metadata-access
+        tokens: required
+      - type: webhook
+        url: "${SLACK_WEBHOOK_URL}"
+        batch: true
+        body: "{text: join('', ['🔧 *Cloud Custodian* forzó IMDSv2 (sin downtime) en *', to_string(length(resources)), '* instancia(s) EC2: `', join('`, `', resources[].InstanceId), '` — cuenta ', account_id, ', región ', region])}"

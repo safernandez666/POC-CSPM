@@ -78,17 +78,21 @@ Sin un tag de aislamiento consistente, no le des un motor de remediación autom�
 
 | | Antes | Después |
 |---|---|---|
-| Checks fallando | 10 (16%) | 5 (8%) |
-| Checks pasando | 52 | 57 |
+| Checks fallando | 10 (36%) | 4 (14%) |
+| Checks pasando | 18 | 24 |
 | Críticos | 4 | 0 |
 
-Remediado automáticamente: SSH (22) cerrado, RDP (3389) cerrado, Block Public Access activado en el bucket S3.
+Remediado automáticamente: SSH (22) cerrado, RDP (3389) cerrado, Block Public Access activado en el bucket S3, IMDSv2 forzado en la instancia EC2 (sin downtime — verificado por `LaunchTime` sin cambios).
 
 **No remediado automáticamente, a propósito:**
 
-- **IMDSv1 en la instancia EC2** — cambiarlo requiere stop/start, y automatizar downtime no es algo que este proyecto haga sin supervisión.
-- **EBS sin encriptar** — no hay operación in-place; requiere snapshot → copiar encriptado → recrear el volumen.
-- **Permisos IAM excesivos** — achicarlos requiere saber qué usa realmente la instancia, y eso es conocimiento de negocio, no algo que una policy pueda inferir.
+- **Instancia con IP pública + instance profile con permisos amplios** — sacarle el profile o el acceso público puede romper lo que esa instancia esté haciendo; es una decisión de arquitectura, no un flag.
+- **Secrets hardcodeados en el user data** — no se cambia en caliente; el user data se fija al lanzar la instancia, así que arreglarlo implica editar el launch template y reemplazar la instancia.
+
+**Pendiente, pero sin nada de especial (simplemente no hay policy todavía):**
+
+- IMDSv2 por default a nivel de cuenta (distinto del control por instancia que sí remediamos).
+- Block Public Access a nivel de cuenta (distinto del control por bucket que sí remediamos).
 
 ## Costos
 
